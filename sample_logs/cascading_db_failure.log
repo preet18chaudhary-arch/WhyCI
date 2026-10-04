@@ -1,0 +1,23 @@
+2026-10-04T10:01:02.100Z ##[group]Run docker compose up -d postgres
+2026-10-04T10:01:04.200Z Creating whyci_postgres ... done
+2026-10-04T10:01:08.010Z ##[endgroup]
+2026-10-04T10:01:08.100Z ##[group]Run python scripts/init_db.py
+2026-10-04T10:01:08.400Z Initializing application database
+2026-10-04T10:01:08.510Z Error: Cannot connect to database
+2026-10-04T10:01:08.511Z Database connection refused at postgres:5432
+2026-10-04T10:01:08.512Z Failed to initialize database schema
+2026-10-04T10:01:08.600Z ##[error]Database init step exited with code 1
+2026-10-04T10:01:08.700Z ##[endgroup]
+2026-10-04T10:01:09.000Z ##[group]Run npm test
+2026-10-04T10:01:10.100Z PASS src/config.test.js
+2026-10-04T10:01:10.800Z FAIL: user test
+2026-10-04T10:01:10.801Z     Error: expected 200, received 503
+2026-10-04T10:01:11.010Z FAIL: order test
+2026-10-04T10:01:11.011Z     Error: expected session, received null
+2026-10-04T10:01:11.200Z FAIL: billing test
+2026-10-04T10:01:11.400Z Test Suites: 3 failed, 1 passed, 4 total
+2026-10-04T10:01:11.401Z npm ERR! Test failed. See above for more details.
+2026-10-04T10:01:11.500Z ##[error]Process completed with exit code 1.
+2026-10-04T10:01:11.600Z ##[endgroup]
+2026-10-04T10:01:12.000Z Build failed
+2026-10-04T10:01:12.100Z Post job cleanup.

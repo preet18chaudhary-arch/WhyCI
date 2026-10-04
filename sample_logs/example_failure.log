@@ -1,0 +1,30 @@
+2026-10-04T09:12:01.001Z ##[group]Run npm ci
+2026-10-04T09:12:04.110Z npm WARN deprecated inflight@1.0.6: This module is not supported
+2026-10-04T09:12:18.441Z added 412 packages in 14s
+2026-10-04T09:12:18.502Z ##[endgroup]
+2026-10-04T09:12:18.610Z ##[group]Run npm test
+2026-10-04T09:12:19.004Z
+2026-10-04T09:12:19.005Z > whyci-demo@0.1.0 test
+2026-10-04T09:12:19.006Z > jest
+2026-10-04T09:12:19.800Z
+2026-10-04T09:12:20.011Z PASS src/config.test.js
+2026-10-04T09:12:20.440Z FAIL: src/auth.test.js
+2026-10-04T09:12:20.441Z   ● Auth › login returns a session token
+2026-10-04T09:12:20.442Z
+2026-10-04T09:12:20.443Z     Error: expected 200, received 401
+2026-10-04T09:12:20.444Z
+2026-10-04T09:12:20.445Z       at Object.<anonymous> (src/auth.test.js:18:11)
+2026-10-04T09:12:20.900Z
+2026-10-04T09:12:21.010Z Test Suites: 1 failed, 1 passed, 2 total
+2026-10-04T09:12:21.011Z Tests:       1 failed, 3 passed, 4 total
+2026-10-04T09:12:21.100Z npm ERR! Test failed. See above for more details.
+2026-10-04T09:12:21.101Z ##[error]Process completed with exit code 1.
+2026-10-04T09:12:21.200Z ##[warning]Node.js 18 actions are deprecated. Update to Node.js 20.
+2026-10-04T09:12:21.300Z ##[endgroup]
+2026-10-04T09:12:21.400Z Python helper traceback for local debug hook:
+2026-10-04T09:12:21.401Z Traceback (most recent call last):
+2026-10-04T09:12:21.402Z   File "scripts/notify.py", line 12, in <module>
+2026-10-04T09:12:21.403Z     raise RuntimeError("notify skipped because tests FAILED")
+2026-10-04T09:12:21.404Z RuntimeError: notify skipped because tests FAILED
+2026-10-04T09:12:21.500Z fatal: could not read Username for 'https://github.com'
+2026-10-04T09:12:21.600Z Post job cleanup.
