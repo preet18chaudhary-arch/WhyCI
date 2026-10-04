@@ -114,3 +114,82 @@ CASCADE_RULES: tuple[ScoringRule, ...] = (
 )
 
 ALL_SCORING_RULES: tuple[ScoringRule, ...] = CAUSE_RULES + CASCADE_RULES
+
+# Nearby non-evidence lines around the candidate cluster shown as context.
+CONTEXT_LINE_WINDOW = 2
+
+REDACTION_PLACEHOLDER = "[REDACTED]"
+
+# Named keys whose assigned values are treated as secrets.
+# This is a transparent allowlist, not a complete secret detector.
+SENSITIVE_ASSIGNMENT_KEYS = (
+    r"api[_-]?key",
+    r"access[_-]?token",
+    r"auth[_-]?token",
+    r"client[_-]?secret",
+    r"secret[_-]?key",
+    r"secret",
+    r"password",
+    r"passwd",
+    r"pwd",
+    r"token",
+)
+
+
+@dataclass(frozen=True)
+class RedactionRule:
+    """Named regex used to replace a secret value with REDACTION_PLACEHOLDER."""
+
+    name: str
+    pattern: re.Pattern[str]
+    replacement: str
+    description: str
+
+
+def _redaction_rule(name: str, pattern: str, replacement: str, description: str) -> RedactionRule:
+    return RedactionRule(
+        name=name,
+        pattern=re.compile(pattern),
+        replacement=replacement,
+        description=description,
+    )
+
+
+_SENSITIVE_KEY = "(?:" + "|".join(SENSITIVE_ASSIGNMENT_KEYS) + ")"
+_NOT_PLACEHOLDER = r"(?!\[REDACTED\])"
+_SECRET_VALUE = rf"""(?:"[^"]*"|'[^']*'|{_NOT_PLACEHOLDER}[^\s,;]+)"""
+
+# Assignments and Bearer run first so a token inside KEY=value is one replacement.
+# Raw token formats then catch secrets that are not named assignments.
+REDACTION_RULES: tuple[RedactionRule, ...] = (
+    _redaction_rule(
+        "quoted_assignment",
+        rf"(?i)([\"']{_SENSITIVE_KEY}[\"']\s*:\s*){_SECRET_VALUE}",
+        rf"\1{REDACTION_PLACEHOLDER}",
+        "JSON/quoted sensitive key/value pairs",
+    ),
+    _redaction_rule(
+        "env_assignment",
+        rf"(?i)(\b{_SENSITIVE_KEY})(\s*[=:]\s*){_SECRET_VALUE}",
+        rf"\1\2{REDACTION_PLACEHOLDER}",
+        "PASSWORD=, API_KEY=, TOKEN= and similar assignments",
+    ),
+    _redaction_rule(
+        "bearer_token",
+        r"(?i)(\b(?:Authorization:\s*)?Bearer\s+)" + _SECRET_VALUE,
+        rf"\1{REDACTION_PLACEHOLDER}",
+        "Authorization Bearer headers and Bearer tokens",
+    ),
+    _redaction_rule(
+        "github_token",
+        r"(?:github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{36})",
+        REDACTION_PLACEHOLDER,
+        "GitHub personal, OAuth, and fine-grained token prefixes",
+    ),
+    _redaction_rule(
+        "aws_access_key_id",
+        r"AKIA[0-9A-Z]{16}",
+        REDACTION_PLACEHOLDER,
+        "AWS-style access key IDs",
+    ),
+)

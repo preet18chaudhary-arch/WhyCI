@@ -90,6 +90,18 @@ def format_summary(result: ProcessingResult) -> str:
     lines.extend(["", "Possible cascading failures:"])
     _append_line_list(lines, result.cascading_evidence or result.cascading_failure_lines)
 
+    lines.extend(["", "Relevant context:"])
+    _append_line_list(lines, result.relevant_context)
+
+    lines.extend(["", "Secret redaction:"])
+    if result.redaction is not None and result.redaction.applied:
+        rule_list = ", ".join(result.redaction.matched_rules) or "(unnamed)"
+        lines.append(
+            f"applied ({result.redaction.replacement_count} replacement(s); rules: {rule_list})"
+        )
+    else:
+        lines.append("not applied")
+
     lines.extend(["", "Explanation:"])
     lines.append(
         result.root_cause_explanation
