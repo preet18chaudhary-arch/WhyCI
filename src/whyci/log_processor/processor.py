@@ -55,7 +55,7 @@ class ProcessingResult:
         return len(self.warning_lines)
 
 
-def load_log_lines(log_path: Path) -> list[LogLine]:
+def load_log_lines(log_path: Path, redact: bool = False) -> list[LogLine]:
     """Read a log file and preserve original line numbers."""
     if not log_path.is_file():
         raise FileNotFoundError(f"Log file not found: {log_path}")
@@ -64,6 +64,10 @@ def load_log_lines(log_path: Path) -> list[LogLine]:
     with log_path.open(encoding=LOG_ENCODING, errors="replace") as handle:
         for index, raw_line in enumerate(handle, start=1):
             lines.append(LogLine(line_number=index, text=raw_line.rstrip("\r\n")))
+    if redact:
+        from whyci.redactor import redact_log_lines
+
+        return list(redact_log_lines(lines))
     return lines
 
 
@@ -101,12 +105,20 @@ def classify_lines(lines: list[LogLine]) -> tuple[tuple[LogLine, ...], tuple[Log
     return tuple(errors), tuple(warnings)
 
 
-def process_log_file(log_path: str | Path) -> ProcessingResult:
-    """Load a CI log, detect signals, and attach a heuristic candidate analysis."""
+def process_log_lines(
+    lines: list[LogLine],
+    source_path: Path | str,
+    redact: bool = True,
+) -> ProcessingResult:
+    """Classify and heuristically analyze a sequence of LogLines."""
     from whyci.log_processor.analyzer import analyze_error_lines
 
-    path = Path(log_path)
-    lines = load_log_lines(path)
+    path = Path(source_path)
+    if redact:
+        from whyci.redactor import redact_log_lines
+
+        lines = list(redact_log_lines(lines))
+
     error_lines, warning_lines = classify_lines(lines)
     analysis = analyze_error_lines(error_lines)
     return ProcessingResult(
@@ -128,3 +140,10 @@ def process_log_file(log_path: str | Path) -> ProcessingResult:
         supporting_evidence=analysis.supporting_evidence,
         cascading_evidence=analysis.cascading_evidence,
     )
+
+
+def process_log_file(log_path: str | Path, redact: bool = True) -> ProcessingResult:
+    """Load a CI log, detect signals, and attach a heuristic candidate analysis."""
+    path = Path(log_path)
+    lines = load_log_lines(path, redact=False)
+    return process_log_lines(lines, source_path=path, redact=redact)
