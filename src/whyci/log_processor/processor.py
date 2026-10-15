@@ -58,7 +58,7 @@ class ProcessingResult:
         return len(self.warning_lines)
 
 
-def load_log_lines(log_path: Path) -> list[LogLine]:
+def load_log_lines(log_path: Path, redact: bool = False) -> list[LogLine]:
     """Read a log file and preserve original line numbers."""
     if not log_path.is_file():
         raise FileNotFoundError(f"Log file not found: {log_path}")
@@ -67,6 +67,9 @@ def load_log_lines(log_path: Path) -> list[LogLine]:
     with log_path.open(encoding=LOG_ENCODING, errors="replace") as handle:
         for index, raw_line in enumerate(handle, start=1):
             lines.append(LogLine(line_number=index, text=raw_line.rstrip("\r\n")))
+    if redact:
+        from whyci.redactor import redact_log_lines
+        return list(redact_log_lines(lines))
     return lines
 
 
@@ -104,33 +107,42 @@ def classify_lines(lines: list[LogLine]) -> tuple[tuple[LogLine, ...], tuple[Log
     return tuple(errors), tuple(warnings)
 
 
-def process_log_file(log_path: str | Path) -> ProcessingResult:
-    """Load a CI log, detect signals, and attach a heuristic candidate analysis."""
+def process_log_lines(
+    lines: list[LogLine] | tuple[LogLine, ...],
+    source_path: str | Path,
+    redact: bool = True,
+) -> ProcessingResult:
+    """Analyze log lines while retaining evidence and redaction metadata."""
     from whyci.log_processor.analyzer import FailureCluster, analyze_error_lines
     from whyci.log_processor.evidence import extract_relevant_context
     from whyci.log_processor.redactor import (
-        redact_lines,
-        redacted_line_map,
-        remap_line,
-        remap_lines,
-        summarize_redactions,
+        redact_lines, remap_line, remap_lines, summarize_redactions,
     )
 
-    path = Path(log_path)
-    lines = load_log_lines(path)
-    error_lines, warning_lines = classify_lines(lines)
-    analysis = analyze_error_lines(error_lines)
-    context_lines = extract_relevant_context(lines, analysis)
+    path = Path(source_path)
+    original_lines = list(lines)
+    summary = None
 
-    redacted = redact_lines(lines)
-    by_number = redacted_line_map(redacted)
-    summary = summarize_redactions(redacted)
+    if redact:
+        phase3_results = redact_lines(original_lines)
+        summary = summarize_redactions(phase3_results)
+        phase3_lines = tuple(item.redacted for item in phase3_results)
+
+        from whyci.redactor import redact_log_lines
+        analysis_lines = list(redact_log_lines(phase3_lines))
+    else:
+        analysis_lines = original_lines
+
+    by_number = {line.line_number: line for line in analysis_lines}
+    errors, warnings = classify_lines(analysis_lines)
+    analysis = analyze_error_lines(errors)
+    context = extract_relevant_context(analysis_lines, analysis)
 
     return ProcessingResult(
         source_path=path,
-        total_lines=len(lines),
-        error_lines=remap_lines(error_lines, by_number),
-        warning_lines=remap_lines(warning_lines, by_number),
+        total_lines=len(original_lines),
+        error_lines=remap_lines(errors, by_number),
+        warning_lines=remap_lines(warnings, by_number),
         root_cause_candidate=remap_line(analysis.root_cause_candidate, by_number),
         root_cause_score=analysis.root_cause_score,
         root_cause_line_number=analysis.root_cause_line_number,
@@ -147,6 +159,15 @@ def process_log_file(log_path: str | Path) -> ProcessingResult:
         primary_evidence=remap_lines(analysis.primary_evidence, by_number),
         supporting_evidence=remap_lines(analysis.supporting_evidence, by_number),
         cascading_evidence=remap_lines(analysis.cascading_evidence, by_number),
-        relevant_context=remap_lines(context_lines, by_number),
+        relevant_context=remap_lines(context, by_number),
         redaction=summary,
     )
+
+
+def process_log_file(
+    log_path: str | Path, redact: bool = True
+) -> ProcessingResult:
+    """Load and analyze a CI log file; redact secrets by default."""
+    path = Path(log_path)
+    lines = load_log_lines(path, redact=False)
+    return process_log_lines(lines, source_path=path, redact=redact)
