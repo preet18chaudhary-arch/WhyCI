@@ -248,7 +248,7 @@ export default function App() {
                 Analysis History
               </h2>
               <p className="mt-1 text-xs text-slate-400">
-                Recent analyses yahan locally saved hain.
+                Recent analyses are saved locally on this device.
               </p>
             </div>
 
@@ -291,7 +291,7 @@ export default function App() {
             !historyMessage &&
             history.length === 0 && (
               <p className="mt-4 text-xs text-slate-500">
-                Abhi koi saved analysis nahi hai.
+                No saved analyses yet.
               </p>
             )}
 
