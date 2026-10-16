@@ -1,68 +1,102 @@
-# WhyCI — Explain Why This Failed
+# WhyCI — Explain Why Your CI Failed
 
-WhyCI is a privacy-first CI failure diagnosis engine for GitHub Actions. The long-term goal is to turn noisy workflow logs into a structured explanation of what failed, with secrets redacted before any external AI analysis.
+> **Stop guessing. Start fixing.**
 
-The LLM is support, not the core. The engineering value is the log-intelligence and security pipeline around it.
+WhyCI is a privacy-first CI failure diagnosis tool that turns noisy CI logs into explainable results. It redacts recognized secrets, groups related failures, and ranks a likely root-cause candidate with supporting evidence, original line numbers, and actionable debugging suggestions.
 
-## Current phase
+**Built around deterministic analysis, not an LLM.** WhyCI uses transparent heuristic scoring to help developers investigate CI failures without requiring AI credentials.
 
-This repository is a **local CI-log-processing prototype** (Phase 2).
+## Features
 
-It can:
+- **Log analysis:** classify error and warning signals from CI logs.
+- **Secret redaction:** redact recognized credentials before analysis or display.
+- **Failure clustering:** group related errors to make patterns easier to inspect.
+- **Root-cause ranking:** prioritize a likely cause using deterministic heuristic scoring.
+- **Cascade detection:** highlight possible downstream failures.
+- **Evidence and line numbers:** explain why a candidate was selected.
+- **Debugging suggestions:** provide practical next steps for different failure categories.
+- **Report exports:** export sanitized results as JSON or Markdown.
+- **Web interface and CLI:** inspect logs in the browser or run analysis from the command line.
+- **Five bundled demos:** explore authentication, database, secret-redaction, Python dependency, and TypeScript compilation failures.
 
-- read a CI log file
-- count lines and flag error-like / warning-like signals
-- score those signals with a transparent heuristic
-- group nearby errors into failure clusters
-- propose a **likely root-cause candidate** and possible cascading failures
-
-The score is a deterministic priority weight, **not** AI confidence, and **not** a guaranteed root cause.
-
-It does **not** yet:
-
-- talk to GitHub or GitHub Actions
-- call an LLM
-- redact secrets
-- post pull request comments
-- include a frontend, database, or authentication
+> **Scoring note:** Scores are heuristic priority weights, not AI confidence probabilities or guarantees of the true root cause.
 
 ## Project structure
 
-```
+The project includes a Python analysis engine, a FastAPI backend, a React and TypeScript frontend, sample CI logs, and automated tests.
+
+```text
 WhyCI/
-├── src/whyci/              # Python package
-│   ├── main.py             # CLI entry point
-│   ├── config.py           # detection patterns and scoring rules
-│   └── log_processor/      # loading, classification, heuristic analysis
-├── tests/                  # pytest coverage for processor and analyzer
-├── sample_logs/            # example GitHub Actions-style failure logs
+├── src/whyci/          # Deterministic analysis engine
+├── backend/            # FastAPI application and API routes
+├── frontend/           # React + TypeScript web interface
+├── sample_logs/        # Five bundled CI failure examples
+├── tests/              # Automated test suite
+├── requirements.txt
 ├── .env.example
 ├── .gitignore
-├── requirements.txt
 └── README.md
 ```
+## Status
 
-## Install dependencies
+WhyCI runs locally and includes a web interface, a CLI, API endpoints, secret-redaction logic, sample scenarios, and automated tests. Its analysis is heuristic, so results should be reviewed alongside the supporting evidence.
 
-Python 3.11+ is required.
+## Prerequisites
+
+- Python 3.11 or newer
+- Node.js 18 or newer
+- npm 9 or newer
+
+## Installation
+
+### 1. Install Python dependencies
+
+From the project root, create and activate a virtual environment in PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-On macOS or Linux:
+### 2. Install frontend dependencies
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+```powershell
+cd frontend
+npm install
+cd ..
 ```
 
-## Run the CLI
+## Run the application
 
-From the project root, put `src` on `PYTHONPATH` so `python -m whyci.main` can import the package:
+### Start the backend
+
+From the project root, in PowerShell:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+When the server starts, open these URLs in your browser:
+
+- Web application: http://localhost:8000
+- Interactive API documentation: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
+
+### Build the frontend
+
+If you need to rebuild the frontend, open a second terminal in the project root and run:
+
+```powershell
+cd frontend
+npm run build
+cd ..
+```
+
+### Run the CLI
+
+From the project root, in a terminal:
 
 ```powershell
 $env:PYTHONPATH = "src"
@@ -70,18 +104,37 @@ python -m whyci.main --log sample_logs/example_failure.log
 python -m whyci.main --log sample_logs/cascading_db_failure.log
 ```
 
-On macOS or Linux:
-
-```bash
-PYTHONPATH=src python -m whyci.main --log sample_logs/example_failure.log
-PYTHONPATH=src python -m whyci.main --log sample_logs/cascading_db_failure.log
-```
-
-The CLI prints total lines, error and warning counts, a likely root-cause candidate with a heuristic score, supporting evidence, possible cascading failures, and the detected error lines with original line numbers.
-
 ## Run tests
+
+From the project root:
 
 ```powershell
 $env:PYTHONPATH = "src"
-python -m pytest tests
+python -m pytest -v
 ```
+
+The current verified backend test result is **88 passed**. Re-run the tests after code changes to confirm the result remains current.
+
+## API overview
+
+The FastAPI backend provides endpoints for health checks, bundled sample logs, log analysis, and demo workflows.
+
+Open [the interactive API documentation](http://localhost:8000/docs) while the application is running to inspect the available routes and their request and response formats.
+
+## Security and limitations
+
+- WhyCI is designed to redact recognized secrets before analysis or display.
+- Redaction is pattern-based and cannot guarantee detection of every possible credential.
+- Analysis uses deterministic heuristic scoring, not a calibrated probability of correctness.
+- Treat diagnostic results as recommendations and review the evidence before changing your CI configuration.
+- Avoid uploading sensitive production logs unless you are comfortable with how and where they are processed.
+
+## Current limitations
+
+- Root-cause rankings are heuristic candidates, not guaranteed diagnoses.
+- Unrecognized log formats and secrets may not be handled correctly.
+- Results depend on the patterns and rules implemented in the current version.
+
+## Roadmap
+
+Potential future improvements include broader CI log format support, additional tested redaction patterns, and optional integrations with CI platforms.
