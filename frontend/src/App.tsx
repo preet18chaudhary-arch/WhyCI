@@ -226,9 +226,7 @@ export default function App() {
                 <span className="text-emerald-400 font-semibold">
                   Privacy-first.
                 </span>{' '}
-                Secrets are redacted before analysis. Logs are processed in
-                memory and never stored permanently. Regex-based detection
-                cannot guarantee that all secrets are caught.
+                Secrets are redacted before analysis. Original uploaded logs are processed in memory and are not saved to history. Redacted analysis summaries are stored locally for your history. Regex-based detection cannot guarantee that all secrets are caught.
               </p>
             </div>
 
