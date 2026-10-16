@@ -9,7 +9,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
-from starlette import status
 
 # Ensure src/ is importable
 _SRC_DIR = Path(__file__).parent.parent.parent / "src"
@@ -71,20 +70,20 @@ def _read_upload_to_lines(content: bytes, filename: str) -> list[LogLine]:
     # Basic binary detection
     if b"\x00" in content:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="File appears to be binary. Only plain-text log files are supported.",
         )
     try:
         text = content.decode("utf-8", errors="replace")
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="Could not decode file as UTF-8 text.",
         )
     raw_lines = text.splitlines()
     if len(raw_lines) > MAX_LINE_COUNT:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail=f"Log file exceeds the {MAX_LINE_COUNT:,}-line limit ({len(raw_lines):,} lines).",
         )
     return [LogLine(line_number=i + 1, text=line) for i, line in enumerate(raw_lines)]
@@ -158,7 +157,7 @@ async def analyze_upload(
     lower = filename.lower()
     if not (lower.endswith(".log") or lower.endswith(".txt")):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="Only .log and .txt files are accepted.",
         )
 
@@ -166,12 +165,12 @@ async def analyze_upload(
     content = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=413,
             detail=f"File exceeds the {MAX_UPLOAD_BYTES // (1024*1024)} MB limit.",
         )
     if len(content) == 0:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="Uploaded file is empty.",
         )
 

@@ -1,134 +1,334 @@
-# WhyCI — Explain Why This Failed
+# WhyCI — Explain Why Your CI Failed
 
-WhyCI is a privacy-first CI failure diagnosis engine for GitHub Actions. The long-term goal is to turn noisy workflow logs into a structured explanation of what failed, with secrets redacted before any external AI analysis.
+> **Stop guessing. Start fixing.**
 
-The LLM is support, not the core. The engineering value is the log-intelligence and security pipeline around it.
+WhyCI is a privacy-first CI failure diagnosis application. It reads your CI log file, redacts secrets, and uses a **deterministic Python engine** to rank the most likely root cause — with supporting evidence, exact line numbers, and actionable debugging steps. No LLM required. No credentials needed to run locally.
 
-## Current phase
+---
 
-This repository is a **local CI-log-processing prototype with GitHub Actions archive support and security redaction** (Phase 4).
+## What it does
 
-It can:
+- **Upload** any `.log` or `.txt` CI log file via drag-and-drop or file picker
+- **Redacts** GitHub tokens, AWS keys, Bearer headers, passwords, and other credentials *before* analysis or display
+- **Classifies** error and warning signals with configurable pattern rules
+- **Clusters** nearby related failures into failure groups
+- **Ranks** a likely root-cause candidate using a transparent deterministic scoring system
+- **Identifies** possible cascading failures downstream of the root cause
+- **Explains** why the candidate was selected, with original line numbers and supporting evidence
+- **Suggests** concrete debugging steps per failure category
+- **Exports** sanitized reports as JSON or Markdown
+- Runs **5 bundled sample logs** for immediate demo without any credentials or internet access
 
-- read single CI log files (`--log`)
-- safely inspect and analyze locally downloaded GitHub Actions workflow log ZIP archives (`--archive` / `--zip`)
-- defend against malicious archives (Zip Slip path traversal prevention, in-memory stream extraction, decompression bomb limits)
-- redact secrets and credentials by default (Phase 3 security layer)
-- score signals with a transparent heuristic
-- group nearby errors into failure clusters
-- propose a **likely root-cause candidate** and possible cascading failures across workflow jobs
+---
 
-The score is a deterministic priority weight, **not** AI confidence, and **not** a guaranteed root cause.
-
-It does **not** yet:
-
-- call an LLM
-- post pull request comments
-- include a frontend, database, or authentication
-
-## Project structure
+## Architecture
 
 ```
 WhyCI/
-├── src/whyci/              # Python package
-│   ├── main.py             # CLI entry point (--log, --archive)
-│   ├── config.py           # detection patterns and scoring rules
-│   ├── github_actions.py   # safe workflow ZIP archive processing (Phase 4)
-│   ├── redactor.py         # deterministic secret redaction (Phase 3)
-│   └── log_processor/      # loading, classification, heuristic analysis
-├── tests/                  # pytest coverage (processor, analyzer, redactor, github_actions)
-├── sample_logs/            # example GitHub Actions-style failure logs
-├── .env.example
-├── .gitignore
+├── src/whyci/                   # Deterministic analysis engine (Python)
+│   ├── __init__.py
+│   ├── config.py                # Detection patterns, scoring rules, redaction rules
+│   ├── github_actions.py        # Safe ZIP archive processor (Zip Slip protection)
+│   ├── redactor.py              # Two-layer secret redaction
+│   ├── main.py                  # CLI entry point (--log, --archive)
+│   └── log_processor/
+│       ├── __init__.py
+│       ├── processor.py         # Log loading, line classification
+│       ├── analyzer.py          # Clustering, scoring, root-cause selection
+│       ├── evidence.py          # Evidence extraction and context windowing
+│       └── redactor.py         # Phase-2 pattern-level redaction
+│
+├── backend/                     # FastAPI web API
+│   ├── __init__.py
+│   ├── main.py                  # App factory, CORS, static file serving
+│   ├── service.py               # Adapter: ProcessingResult → API response
+│   └── api/
+│       ├── __init__.py
+│       ├── routes.py            # Route handlers (/health, /api/samples, /api/analyze, /api/demo)
+│       └── schemas.py           # Pydantic request/response models
+│
+├── frontend/                    # React + TypeScript + Vite + Tailwind CSS
+│   ├── src/
+│   │   ├── main.tsx
+│   │   ├── App.tsx              # Main app (state machine: idle/loading/result/error)
+│   │   ├── api.ts               # Typed fetch client
+│   │   ├── index.css            # Tailwind + global styles
+│   │   └── components/
+│   │       ├── DropZone.tsx     # Drag-and-drop file upload
+│   │       ├── SampleSelector.tsx
+│   │       ├── LogViewer.tsx    # Collapsible log table with search
+│   │       └── AnalysisResult.tsx  # Results panel, export/copy
+│   ├── dist/                    # Production build (served by FastAPI)
+│   └── vite.config.ts
+│
+├── sample_logs/                 # Bundled CI failure examples
+│   ├── example_failure.log      # npm auth test failure
+│   ├── cascading_db_failure.log # Postgres connection refused → test cascade
+│   ├── secret_redaction_failure.log  # Credential redaction demo
+│   ├── python_dependency_failure.log # Missing pip package → ModuleNotFoundError
+│   └── compilation_failure.log  # TypeScript type errors → build failure
+│
+├── tests/                       # pytest suite (88 tests)
+│   ├── test_analyzer.py
+│   ├── test_evidence.py
+│   ├── test_github_actions.py
+│   ├── test_log_processor.py
+│   ├── test_redactor.py
+│   └── test_api.py              # API integration tests (FastAPI TestClient)
+│
 ├── requirements.txt
+├── .env.example
 └── README.md
 ```
 
-## Install dependencies
+---
 
-Python 3.11+ is required.
+## Prerequisites
+
+- **Python 3.11+** (tested on 3.12)
+- **Node.js 18+** and **npm 9+** (for frontend)
+
+---
+
+## Installation
+
+### 1. Python dependencies
 
 ```powershell
+# Windows PowerShell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-On macOS or Linux:
-
 ```bash
+# macOS / Linux
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Run the CLI
-
-From the project root, put `src` on `PYTHONPATH` so `python -m whyci.main` can import the package.
-
-### 1. Single Log File (`--log`)
+### 2. Frontend dependencies (one-time)
 
 ```powershell
-$env:PYTHONPATH = "src"
-python -m whyci.main --log sample_logs/example_failure.log
-python -m whyci.main --log sample_logs/cascading_db_failure.log
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd frontend
+npm install
+npm run build
+cd ..
 ```
-
-On macOS or Linux:
 
 ```bash
-PYTHONPATH=src python -m whyci.main --log sample_logs/example_failure.log
-PYTHONPATH=src python -m whyci.main --log sample_logs/cascading_db_failure.log
+cd frontend
+npm install
+npm run build
+cd ..
 ```
 
-The CLI prints total lines, error and warning counts, a likely root-cause candidate with a heuristic score, supporting evidence, possible cascading failures, and the detected error lines with original line numbers. Secrets are automatically redacted by default.
+---
 
-### 2. GitHub Actions Workflow Archive (`--archive` / `--zip`)
+## Run the application
 
-WhyCI supports analyzing locally downloaded GitHub Actions workflow run log archives in ZIP format without needing a GitHub API token:
+### Web application (recommended)
 
-#### How to download logs from GitHub Actions:
-- **Via GitHub Web UI**: Open the failed workflow run page, click the `...` menu in the upper-right corner of the run, and select **Download log archive** (saves a `.zip` file).
-- **Via GitHub CLI (`gh`)**:
-  ```bash
-  gh run download <run-id>
-  ```
+```powershell
+# Windows PowerShell — from project root
+$env:PYTHONPATH = "src"
+python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-#### Analyzing the archive:
+```bash
+# macOS / Linux
+PYTHONPATH=src uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Open **http://localhost:8000** in your browser.
+
+> The built frontend (`frontend/dist/`) is served automatically. If you edit the frontend, re-run `npm run build` in the `frontend/` directory.
+
+### CLI (no web server required)
 
 ```powershell
 $env:PYTHONPATH = "src"
+python -m whyci.main --log sample_logs/cascading_db_failure.log
+python -m whyci.main --log sample_logs/python_dependency_failure.log
 python -m whyci.main --archive path/to/workflow_logs.zip
 ```
 
-On macOS or Linux:
-
 ```bash
-PYTHONPATH=src python -m whyci.main --archive path/to/workflow_logs.zip
+PYTHONPATH=src python -m whyci.main --log sample_logs/cascading_db_failure.log
 ```
 
-#### Safe Archive Processing Guarantees:
-- **In-Memory Streaming**: Log entries are read directly from archive streams into memory without extracting files to arbitrary disk locations.
-- **Path Traversal Protection**: Rejects zip slip attempts (`../`, absolute paths).
-- **Decompression Bomb Protection**: Enforces safety caps (max 50 MB total decompressed, max 20 MB per file, max 100 entries).
-- **Multi-Job Candidate Ranking**: Evaluates each job in the workflow and ranks the overall root-cause candidate across all jobs.
-- **Automatic Secret Redaction**: Credentials in all workflow logs are sanitized by default before analysis.
+Add `--no-redact` to disable redaction for offline debugging of non-sensitive logs (**unsafe** for real credentials).
 
-### 3. Secret Redaction & Offline Debugging
-
-Redaction is enabled by default for both single logs and archives. To disable redaction for offline debugging of non-sensitive logs:
-
-```powershell
-python -m whyci.main --log sample_logs/example_failure.log --no-redact
-python -m whyci.main --archive path/to/workflow_logs.zip --no-redact
-```
-
-> [!WARNING]
-> `--no-redact` is **UNSAFE** for logs containing credentials or secrets.
+---
 
 ## Run tests
 
 ```powershell
 $env:PYTHONPATH = "src"
-python -m pytest tests
+python -m pytest tests -v
 ```
+
+```bash
+PYTHONPATH=src python -m pytest tests -v
+```
+
+**Expected result:** `88 passed` (64 engine tests + 24 API integration tests)
+
+---
+
+## API endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Application health and version |
+| `GET` | `/api/samples` | List bundled sample logs |
+| `GET` | `/api/samples/{id}` | Get sample metadata |
+| `GET` | `/api/demo/{id}` | Analyze a bundled sample |
+| `POST` | `/api/analyze` | Upload and analyze a log file |
+
+Interactive API docs: **http://localhost:8000/docs**
+
+### Example: analyze a sample
+
+```bash
+curl http://localhost:8000/api/demo/cascading_db_failure | python -m json.tool
+```
+
+### Example: upload a log file
+
+```bash
+curl -X POST http://localhost:8000/api/analyze \
+  -F "file=@sample_logs/example_failure.log" | python -m json.tool
+```
+
+### Response schema (`AnalysisResponse`)
+
+```json
+{
+  "status": "ok",
+  "source_name": "cascading_db_failure.log",
+  "total_lines": 23,
+  "error_count": 11,
+  "warning_count": 0,
+  "failure_clusters": [
+    { "start_line": 6, "end_line": 9, "lines": [...] }
+  ],
+  "root_cause": {
+    "line_number": 7,
+    "text": "Database connection refused at postgres:5432",
+    "category": "infrastructure",
+    "priority_score": 0.92,
+    "score_reasons": ["\"connection refused\" matched a high-priority infrastructure rule", "..."],
+    "explanation": "WhyCI identified a database connection failure as the most likely root-cause candidate."
+  },
+  "primary_evidence": [...],
+  "supporting_evidence": [...],
+  "cascading_failures": [...],
+  "relevant_context": [...],
+  "debugging_suggestions": ["Check that required services started successfully.", "..."],
+  "redaction": { "applied": false, "replacement_count": 0, "matched_rules": [] },
+  "analysis_notes": ["Scores are deterministic priority weights — not AI confidence..."]
+}
+```
+
+---
+
+## Environment configuration
+
+Copy `.env.example` to `.env`. No environment variables are required to run the local MVP.
+
+```bash
+cp .env.example .env
+```
+
+Optional variables for future extensions:
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | Reserved for optional LLM explanation (not implemented in MVP) |
+| `GITHUB_TOKEN` | Reserved for optional GitHub Actions API integration (not implemented in MVP) |
+
+> Never commit `.env` to source control.
+
+---
+
+## Security and redaction
+
+WhyCI applies a **two-layer deterministic redaction** pipeline before analysis or display:
+
+**Detected and replaced with `[REDACTED]`:**
+- GitHub personal access tokens (`ghp_`, `gho_`, `ghs_`, `ghu_`, `ghp_`, fine-grained `github_pat_`)
+- AWS Access Key IDs (`AKIA…`)
+- Slack tokens (`xox…`)
+- Stripe keys (`sk_live_`, `rk_test_`, etc.)
+- GitLab PATs (`glpat-…`)
+- Hugging Face tokens (`hf_…`)
+- NPM tokens (`npm_…`)
+- JSON Web Tokens (JWT `eyJ…`)
+- HTTP `Authorization: Bearer …` and `Proxy-Authorization` headers
+- URL credentials (`https://user:password@host/`)
+- PEM private key blocks (`-----BEGIN ... PRIVATE KEY-----`)
+- Environment variable assignments: `PASSWORD=`, `API_KEY=`, `SECRET=`, `TOKEN=`, etc.
+
+**Limitations:**
+- Regex-based detection only — custom or obfuscated credentials may not be caught
+- Cannot guarantee complete privacy
+- The `--no-redact` CLI flag disables redaction (unsafe for sensitive logs)
+- Log files are processed in memory and not stored permanently by default
+
+---
+
+## Sample logs
+
+| ID | Filename | Demonstrates |
+|----|----------|-------------|
+| `example_failure` | `example_failure.log` | npm auth test failure |
+| `cascading_db_failure` | `cascading_db_failure.log` | Postgres refused → 7 cascading test failures |
+| `secret_redaction_failure` | `secret_redaction_failure.log` | Credential detection and redaction |
+| `python_dependency_failure` | `python_dependency_failure.log` | pip resolution failure → ModuleNotFoundError |
+| `compilation_failure` | `compilation_failure.log` | TypeScript type errors → build failure |
+
+All samples use fictional, non-functional credentials where applicable.
+
+---
+
+## Scoring system
+
+Scores are **deterministic priority weights**, not AI confidence and not a guaranteed root cause.
+
+| Weight range | Meaning |
+|---|---|
+| 0.85 – 0.92 | High-confidence cause signal (connection refused, module not found, etc.) |
+| 0.80 – 0.84 | Strong cause indicator (auth failure, version mismatch, compilation error) |
+| 0.22 – 0.34 | Likely cascade symptom (test failure, generic FAILED, GitHub error annotation) |
+| 0.30 | Unrecognized error pattern |
+
+Rules are defined in [`src/whyci/config.py`](src/whyci/config.py) and can be extended without changing the engine.
+
+---
+
+## Known limitations
+
+- No authentication or user accounts (by design for MVP)
+- No persistent storage of uploaded logs
+- No LLM integration in the current MVP
+- GitHub Actions API integration is documented as a future extension
+- Redaction is regex-based and cannot guarantee all secrets are caught
+- Archive analysis via ZIP (GitHub Actions log downloads) is CLI-only in the current API
+
+---
+
+## Next steps (live demo / deployment)
+
+```bash
+# Kill any existing server on port 8000, then:
+PYTHONPATH=src uvicorn backend.main:app --host 0.0.0.0 --port 8000
+
+# Visit:
+# http://localhost:8000      → Web UI
+# http://localhost:8000/docs → Interactive API docs
+```
+
+For deployment, set `allow_origins` in [`backend/main.py`](backend/main.py) to your production domain and run behind a reverse proxy (nginx, Caddy) with HTTPS.
