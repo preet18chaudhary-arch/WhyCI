@@ -38,8 +38,8 @@ export default function App() {
     } catch (error) {
       setHistoryMessage(
         error instanceof Error
-          ? `History load nahi ho paayi: ${error.message}`
-          : 'History load nahi ho paayi. Backend check karo.'
+          ? `Failed to load history: ${error.message}`
+          : 'Failed to load history. Please check the backend and try again.'
       );
     } finally {
       setHistoryLoading(false);
@@ -118,7 +118,7 @@ export default function App() {
     }
 
     const confirmed = window.confirm(
-      'Kya aap poori analysis history delete karna chahte hain? Yeh action undo nahi ho sakta.'
+      'Are you sure you want to clear your entire analysis history? This action cannot be undone.'
     );
 
     if (!confirmed) return;
@@ -129,12 +129,12 @@ export default function App() {
     try {
       const deleted = await clearHistory();
       setHistory([]);
-      setHistoryMessage(`${deleted} history item(s) delete ho gaye.`);
+      setHistoryMessage(`${deleted} history item(s) deleted successfully.`);
     } catch (error) {
       setHistoryMessage(
         error instanceof Error
-          ? `History delete nahi ho paayi: ${error.message}`
-          : 'History delete nahi ho paayi.'
+          ? `Failed to clear history: ${error.message}`
+          : 'Failed to clear history. Please try again.'
       );
     } finally {
       setClearingHistory(false);
@@ -277,7 +277,7 @@ export default function App() {
 
           {historyLoading && (
             <p className="mt-4 text-xs text-slate-400" role="status">
-              History load ho rahi hai...
+              Loading analysis history...
             </p>
           )}
 
