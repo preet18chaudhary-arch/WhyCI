@@ -1,1 +1,12 @@
+# WhyCI — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# Testing
 pytest>=8.0.0
+httpx>=0.27.0       # required by FastAPI TestClient
+
+# Backend API
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+pydantic>=2.7.0

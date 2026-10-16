@@ -1,0 +1,22 @@
+2026-10-16T08:00:01.001Z ##[group]Set up Python 3.11
+2026-10-16T08:00:02.100Z Successfully set up Python 3.11.9
+2026-10-16T08:00:02.200Z ##[endgroup]
+2026-10-16T08:00:02.300Z ##[group]Install dependencies
+2026-10-16T08:00:02.400Z Running: pip install -r requirements.txt
+2026-10-16T08:00:04.100Z Collecting requests==2.31.0
+2026-10-16T08:00:04.200Z Collecting pydantic==2.7.0
+2026-10-16T08:00:06.300Z ERROR: Could not find a version that satisfies the requirement data-validator==3.9.1 (from versions: 1.0.0, 1.1.0, 2.0.0)
+2026-10-16T08:00:06.301Z ERROR: No matching distribution found for data-validator==3.9.1
+2026-10-16T08:00:06.400Z ##[error]Process completed with exit code 1.
+2026-10-16T08:00:06.500Z ##[endgroup]
+2026-10-16T08:00:06.600Z ##[group]Run tests
+2026-10-16T08:00:06.700Z Traceback (most recent call last):
+2026-10-16T08:00:06.701Z   File "run_tests.py", line 3, in <module>
+2026-10-16T08:00:06.702Z     import data_validator
+2026-10-16T08:00:06.703Z ModuleNotFoundError: No module named 'data_validator'
+2026-10-16T08:00:06.800Z ##[error]Test runner failed — dependency not installed.
+2026-10-16T08:00:07.000Z FAILED: tests/test_transform.py — environment not ready
+2026-10-16T08:00:07.100Z FAILED: tests/test_pipeline.py — environment not ready
+2026-10-16T08:00:07.200Z Tests: 2 failed, 0 passed, 2 total
+2026-10-16T08:00:07.300Z ##[error]Process completed with exit code 1.
+2026-10-16T08:00:07.400Z ##[endgroup]

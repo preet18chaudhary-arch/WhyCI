@@ -1,0 +1,24 @@
+2026-10-16T09:00:01.001Z ##[group]Set up Node 20
+2026-10-16T09:00:02.500Z Node.js v20.14.0 installed.
+2026-10-16T09:00:02.600Z ##[endgroup]
+2026-10-16T09:00:02.700Z ##[group]Install dependencies
+2026-10-16T09:00:04.100Z added 887 packages in 22s
+2026-10-16T09:00:04.200Z ##[endgroup]
+2026-10-16T09:00:04.300Z ##[group]Type check
+2026-10-16T09:00:04.400Z Running: npx tsc --noEmit
+2026-10-16T09:00:06.010Z src/api/client.ts(14,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+2026-10-16T09:00:06.011Z src/api/client.ts(14,5):   Type 'undefined' is not assignable to type 'string'.
+2026-10-16T09:00:06.100Z src/models/user.ts(28,3): error TS2741: Property 'email' is missing in type '{ id: number; name: string; }' but required in type 'User'.
+2026-10-16T09:00:06.200Z src/utils/format.ts(7,10): error TS7006: Parameter 'value' implicitly has an 'any' type.
+2026-10-16T09:00:06.300Z Found 3 errors.
+2026-10-16T09:00:06.301Z ##[error]TypeScript compilation failed — 3 type errors found.
+2026-10-16T09:00:06.400Z ##[endgroup]
+2026-10-16T09:00:06.500Z ##[group]Build
+2026-10-16T09:00:06.600Z Running: npm run build
+2026-10-16T09:00:06.700Z > vite build
+2026-10-16T09:00:06.800Z error during build:
+2026-10-16T09:00:06.801Z Error: Build failed with 3 TypeScript errors.
+2026-10-16T09:00:06.900Z compilation failed: exit code 2
+2026-10-16T09:00:07.000Z ##[error]Process completed with exit code 2.
+2026-10-16T09:00:07.100Z ##[endgroup]
+2026-10-16T09:00:07.200Z Build failed
