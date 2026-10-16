@@ -62,7 +62,6 @@ def record_analysis(result: dict[str, Any]) -> dict[str, Any]:
     """Save a redacted analysis summary and report whether it has occurred before."""
     initialize_history()
 
-    # Persist only the redacted API result; never save the original uploaded log.
     safe_result = dict(result)
     signature = _stable_signature(safe_result)
 
@@ -71,6 +70,10 @@ def record_analysis(result: dict[str, Any]) -> dict[str, Any]:
             "SELECT COUNT(*) FROM analysis_history WHERE signature = ?",
             (signature,),
         ).fetchone()[0]
+
+        # Set repeat metadata before saving the summary.
+        safe_result["repeat_detected"] = previous_count > 0
+        safe_result["repeat_count"] = previous_count + 1
 
         cursor = connection.execute(
             """
@@ -84,12 +87,8 @@ def record_analysis(result: dict[str, Any]) -> dict[str, Any]:
             ),
         )
 
-    safe_result["repeat_detected"] = previous_count > 0
-    safe_result["repeat_count"] = previous_count + 1
     safe_result["history_id"] = cursor.lastrowid
     return safe_result
-
-
 def list_history(limit: int = 50) -> list[dict[str, Any]]:
     """Return recent history entries without exposing the signature."""
     initialize_history()
