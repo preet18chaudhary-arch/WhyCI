@@ -41,6 +41,9 @@ export interface AnalysisResponse {
   debugging_suggestions: string[];
   redaction: RedactionStats | null;
   analysis_notes: string[];
+  repeat_detected: boolean;
+  repeat_count: number;
+  history_id: number | null;
 }
 
 export interface SampleInfo {
@@ -48,6 +51,15 @@ export interface SampleInfo {
   name: string;
   description: string;
   filename: string;
+}
+export interface HistoryItem {
+  id: number;
+  source_name: string;
+  created_at: string;
+  error_count: number;
+  warning_count: number;
+  repeat_detected: boolean;
+  repeat_count: number;
 }
 
 const BASE = '';   // same-origin; Vite proxies /api in dev
@@ -84,4 +96,17 @@ export async function analyzeUpload(file: File): Promise<AnalysisResponse> {
 export async function fetchHealth(): Promise<{ status: string }> {
   const res = await fetch(`${BASE}/health`);
   return handleResponse<{ status: string }>(res);
+}
+export async function fetchHistory(): Promise<HistoryItem[]> {
+  const response = await fetch(`${BASE}/api/history`);
+  const data = await handleResponse<{ items: HistoryItem[] }>(response);
+  return data.items;
+}
+
+export async function clearHistory(): Promise<number> {
+  const response = await fetch(`${BASE}/api/history`, {
+    method: 'DELETE',
+  });
+  const data = await handleResponse<{ deleted_count: number }>(response);
+  return data.deleted_count;
 }

@@ -47,7 +47,9 @@ class AnalysisResponse(BaseModel):
     debugging_suggestions: list[str]
     redaction: Optional[RedactionStats]
     analysis_notes: list[str] = Field(default_factory=list)
-
+    repeat_detected: bool = False
+    repeat_count: int = 0
+    history_id: Optional[int] = None
 
 class SampleInfo(BaseModel):
     id: str

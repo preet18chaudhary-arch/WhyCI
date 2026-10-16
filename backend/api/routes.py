@@ -18,7 +18,8 @@ if str(_SRC_DIR) not in sys.path:
 from whyci.log_processor.processor import LogLine, process_log_lines
 from backend.api.schemas import AnalysisResponse, HealthResponse, SampleInfo
 from backend.service import processing_result_to_response
-
+from backend.history import record_analysis, list_history, clear_history
+from fastapi import status
 router = APIRouter()
 
 # --- Constants ---
@@ -89,12 +90,32 @@ def _read_upload_to_lines(content: bytes, filename: str) -> list[LogLine]:
     return [LogLine(line_number=i + 1, text=line) for i, line in enumerate(raw_lines)]
 
 
+
 def _analyze_lines(lines: list[LogLine], source_name: str) -> AnalysisResponse:
     result = process_log_lines(lines, source_path=source_name, redact=True)
-    return processing_result_to_response(result, source_name=source_name)
+    response = processing_result_to_response(result, source_name=source_name)
+
+    # Persist only the redacted API response.
+    saved = record_analysis(response.model_dump())
+    return AnalysisResponse(**saved)
+
 
 
 # --- Routes ---
+
+
+@router.get("/api/history", tags=["history"])
+def get_analysis_history():
+    """Return recent analysis history."""
+    return {"items": list_history()}
+
+
+@router.delete("/api/history", tags=["history"])
+def delete_analysis_history():
+    """Clear local analysis history."""
+    deleted_count = clear_history()
+    return {"deleted_count": deleted_count}
+
 
 @router.get("/health", response_model=HealthResponse, tags=["meta"])
 def health() -> HealthResponse:

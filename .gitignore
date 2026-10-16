@@ -24,3 +24,9 @@ frontend/dist/
 # Temporary and uploaded logs
 *.tmp
 /tmp_uploads/
+
+# WhyCI local analysis history
+.whyci/
+data/whyci_history.sqlite3
+data/whyci_history.sqlite3-shm
+data/whyci_history.sqlite3-wal
